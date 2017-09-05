@@ -117,6 +117,7 @@ model.add(Dense(512, activation='relu'))
 model.add( Dense( env.action_space.n, kernel_initializer='uniform', activation='linear' ) )
 #model.compile(RMSprop(), 'MSE')
 #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+learning_rate = 0.00025
 model.compile(loss='mse', optimizer=RMSprop(lr=learning_rate, rho=0.95, epsilon=0.01), metrics=['accuracy'] )
 
 model.summary()
