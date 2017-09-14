@@ -76,10 +76,15 @@ import matplotlib.pyplot as plt
 
 #get_ipython().magic('matplotlib inline')
 
+def to_grayscale( observation ):
+    r, g, b = observation[:,:,0], observation[:,:,1], observation[:,:,2]
+    ret = 0.299 * r + 0.587 * g + 0.114 * b
+    return ( ret )
+
 def preprocess_observation( observation ):
     res = cv2.resize( observation, (84,110) )
     crop = res[18:110-8:,:,:]
-    grayscale = cv2.cvtColor( crop, cv2.COLOR_BGR2GRAY )
+    grayscale = to_grayscale( crop )#cv2.cvtColor( crop, cv2.COLOR_BGR2GRAY )
     return ( grayscale )
 
 #plt.imshow( preprocess_observation( observation ), cmap='gray')
@@ -103,16 +108,20 @@ model = Sequential()
 
 #32 filters of kernel(3,3), stride=4, input shape must be in format row, col, channels
 #init='uniform',
-model.add( Conv2D(32, (8,8), strides=(4,4), padding='same', input_shape=(84,84,4) ) )
+#model.add( Conv2D(32, (8,8), strides=(4,4), padding='same', input_shape=(84,84,4) ) )#deep mind
+model.add( Conv2D(16, (8,8), strides=(2,2), padding='same', input_shape=(84,84,4) ) )
 model.add( Activation( 'relu' ) )
 
-model.add(Conv2D(64, (4,4), strides=(2,2), padding='same' ) )
+#model.add(Conv2D(64, (4,4), strides=(2,2), padding='same' ) )#deep min
+model.add(Conv2D(32, (4,4), strides=(2,2), padding='same' ) )
 model.add( Activation( 'relu' ) )
 
 model.add(Conv2D(64, (3,3), strides=(1,1), padding='same' ) )
 model.add( Activation( 'relu' ) )
 
 model.add(Flatten())
+model.add(Dense(512, activation='relu'))
+model.add(Dense(512, activation='relu'))
 model.add(Dense(512, activation='relu'))
 model.add( Dense( env.action_space.n, kernel_initializer='uniform', activation='linear' ) )
 #model.compile(RMSprop(), 'MSE')
@@ -132,7 +141,7 @@ for i in range( 4 ):
 import time
 
 gamma = 0.99
-alpha = 0.1
+alpha = 1#0.999999#00025
 
 max_reward = 0.0
 
@@ -146,7 +155,7 @@ exploration_steps = 1000000
 epsilon_discount = ( epsilon - epsilon_min ) / exploration_steps
 
 MAX_SIZE = 10000#capacity of deque
-MIN_MIN_SIZE = 1000#min size for replay
+MIN_MIN_SIZE = 5000#min size for replay
 D = deque( maxlen=MAX_SIZE )#[]
 
 def load_deque():
@@ -208,7 +217,7 @@ def save_train():
     print("Saved model to disk")
 
     #save deque to disk
-    save_deque()
+    #save_deque()
 
 def load_train():
 
@@ -229,8 +238,11 @@ def load_train():
     if os.path.isfile('model_background.json'):
         load_dqn_model()
 
-    if os.path.isfile('mydeque.pkl'):
-        load_deque()
+    #if os.path.isfile('mydeque.pkl'):
+        #load_deque()
+
+def norm_data( data ):
+    return ( data.astype( float ) / 255.0 )
 
 load_train()
 
@@ -248,24 +260,39 @@ def replay( ):
     if len( D ) < MIN_MIN_SIZE:
         return
 
+    #print( "sample" )
+
     samples = random.sample( D, MIN_SIZE )
+
+    all_x = []
+    all_y = []
 
     for sample in samples:
 
         observation, reward, done, new_observation, action = sample
 
-        y = model.predict( observation.reshape(  ( 1, 84, 84, 4) ) )
+        y = model.predict( norm_data( observation.reshape(  ( 1, 84, 84, 4) ) ) )
 
-        Q_next = model.predict( new_observation.reshape(  ( 1, 84, 84, 4) ) )
+        Q_next = model.predict( norm_data( new_observation.reshape(  ( 1, 84, 84, 4) ) ) )
 
         if done:
             y[0,action] += alpha * reward
         else:
             y[0,action] += alpha * ( reward + gamma * ( np.max( Q_next[0]  ) ) - y[0,action] )
 
+        #print( y )
+
         neural_network_observation = observation.reshape(  ( 1, 84, 84, 4) )
-        model.fit( neural_network_observation, y, epochs=1, verbose=0 )
+
+        all_x.append( neural_network_observation )
+        all_y.append( y )
+        #model.fit( neural_network_observation, y, epochs=1, verbose=0 )
         #model.train_on_batch( neural_network_observation, y )
+
+    all_x = np.array( all_x ).reshape( (32,84,84,4) )
+    all_y = np.array( all_y ).reshape( (32,4) )
+
+    model.train_on_batch( all_x, all_y )
 
 start = time.time()
 
@@ -290,10 +317,10 @@ for episode in range( start_episode, total_observe+1 ):#3600*5):
 
         stack_observation = np.stack(recent_frames,axis=0)
 
-        if random.random() < epsilon:
+        if random.uniform(0,1) < epsilon:
             action = env.action_space.sample()
         else:
-            Q = model.predict( stack_observation.reshape(  ( 1, 84, 84, 4) ) )[0]
+            Q = model.predict( norm_data( stack_observation.reshape(  ( 1, 84, 84, 4) ) ) )[0]
             action = np.argmax( Q )
 
         new_observation, reward, done, info = env.step( action )
@@ -305,12 +332,14 @@ for episode in range( start_episode, total_observe+1 ):#3600*5):
         next_new_observation = np.stack(next_recent_frames,axis=0)
 
         D.append( ( stack_observation, reward, done, next_new_observation, action ) )
-
+        
         total_reward += reward
+
+        replay()
 
         if done:
             print(  str(episode) + "Game over!", end= ' ' ),
-            replay()
+            #replay()
             episodes.append( episode )
             rewards.append( total_reward )
             epsilons.append( epsilon )
