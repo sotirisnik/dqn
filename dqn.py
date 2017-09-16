@@ -9,6 +9,8 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 os.system('export CUDA_VISIBLE_DEVICES=""')
 
+import gc
+
 #from keras import backend
 
 
@@ -123,7 +125,7 @@ model.add(Flatten())
 model.add(Dense(512, activation='relu'))
 model.add(Dense(512, activation='relu'))
 model.add(Dense(512, activation='relu'))
-model.add( Dense( env.action_space.n, kernel_initializer='uniform', activation='linear' ) )
+model.add( Dense( env.action_space.n, kernel_initializer='uniform', activation='relu' ) )
 #model.compile(RMSprop(), 'MSE')
 #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 learning_rate = 0.00025
@@ -289,10 +291,14 @@ def replay( ):
         #model.fit( neural_network_observation, y, epochs=1, verbose=0 )
         #model.train_on_batch( neural_network_observation, y )
 
-    all_x = np.array( all_x ).reshape( (32,84,84,4) )
-    all_y = np.array( all_y ).reshape( (32,4) )
+    all_x = np.array( all_x ).reshape( (MIN_SIZE,84,84,4) )
+    all_y = np.array( all_y ).reshape( (MIN_SIZE,4) )
 
     model.train_on_batch( all_x, all_y )
+
+    del all_x, all_y
+
+    gc.collect()
 
 start = time.time()
 
@@ -310,6 +316,8 @@ for episode in range( start_episode, total_observe+1 ):#3600*5):
     total_reward = 0
 
     #print( episode )
+
+    cur_lives = 5
 
     while True:
 
@@ -331,15 +339,21 @@ for episode in range( start_episode, total_observe+1 ):#3600*5):
         next_recent_frames.append( new_observation )
         next_new_observation = np.stack(next_recent_frames,axis=0)
 
-        D.append( ( stack_observation, reward, done, next_new_observation, action ) )
-        
+        memory_reward = reward
+
+        if info['ale.lives'] < cur_lives:
+            cur_lives = info['ale.lives']
+            memory_reward = -1
+
+        D.append( ( stack_observation, memory_reward, done, next_new_observation, action ) )
+
         total_reward += reward
 
-        replay()
+        #replay()
 
         if done:
             print(  str(episode) + "Game over!", end= ' ' ),
-            #replay()
+            replay()
             episodes.append( episode )
             rewards.append( total_reward )
             epsilons.append( epsilon )
@@ -353,7 +367,7 @@ for episode in range( start_episode, total_observe+1 ):#3600*5):
 
     print( "episode " + str(episode) + " done with total reward := " + str(total_reward) )
 
-    if episode % 100 == 0 and episode > 1:
+    if episode % 10 == 0 and episode > 1:
         save_train()
 
 end = time.time()
