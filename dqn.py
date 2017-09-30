@@ -88,6 +88,8 @@ from keras import initializers
 
 model = Sequential()
 
+init_distr = "normal"
+
 #32 filters of kernel(3,3), stride=4, input shape must be in format row, col, channels
 #init='uniform',
 model.add( Conv2D(32, (8,8), strides=(4,4), padding='same', input_shape=(84,84,4) ) )#deep mind
@@ -105,13 +107,13 @@ model.add(Conv2D(64, (3,3), strides=(1,1), kernel_initializer=initializers.rando
 model.add( Activation( 'relu' ) )
 
 model.add(Flatten())
-model.add(Dense(512, kernel_initializer=initializers.random_normal(stddev=0.01), activation='relu'))
-model.add(Dense(256, kernel_initializer=initializers.random_normal(stddev=0.01), activation='relu'))
-model.add(Dense(128, kernel_initializer=initializers.random_normal(stddev=0.01), activation='relu'))
-model.add( Dense( env.action_space.n, kernel_initializer=initializers.random_normal(stddev=0.01), activation='relu' ) )
+model.add(Dense(512, kernel_initializer=init_distr, activation='relu'))
+model.add(Dense(256, kernel_initializer=init_distr, activation='relu'))
+model.add(Dense(128, kernel_initializer=init_distr, activation='relu'))
+model.add( Dense( env.action_space.n, kernel_initializer=init_distr, activation='linear' ) )
 #model.compile(RMSprop(), 'MSE')
 #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
-learning_rate = 0.00025
+learning_rate = 0.001#025
 model.compile(loss='mse', optimizer=RMSprop(lr=learning_rate, rho=0.95, epsilon=0.01), metrics=['accuracy'] )
 
 model.summary()
@@ -269,10 +271,12 @@ def replay( ):
 
         Q_next = model.predict( new_observation.reshape(  ( 1, 84, 84, 4) ) )
 
+        reward = np.clip( reward, -1, 1 )
+
         if done:
-            y[0,action] += alpha * reward
+            y[0,action] = reward
         else:
-            y[0,action] += alpha * ( reward + gamma * ( np.max( Q_next[0]  ) ) - y[0,action] )
+            y[0,action] = reward + gamma * ( np.max( Q_next[0]  ) )
 
         #print( y )
 
@@ -286,7 +290,8 @@ def replay( ):
     all_x = np.array( all_x ).reshape( (MIN_SIZE,84,84,4) )
     all_y = np.array( all_y ).reshape( (MIN_SIZE,4) )
 
-    model.train_on_batch( all_x, all_y )
+    #model.train_on_batch( all_x, all_y )
+    model.fit(all_x, all_y, epochs=1, batch_size=MIN_SIZE, verbose=0)
 
     del all_x, all_y
 
@@ -370,6 +375,7 @@ while episode <= total_observe:#3600*5):
                 episodes.append( episode )
                 rewards.append( total_reward )
                 epsilons.append( epsilon )
+            D.append( ( stack_observation, -1, done, next_new_observation, action ) )
             break
 
         observation = new_observation
