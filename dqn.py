@@ -33,6 +33,7 @@ def get_session(gpu_fraction=0.7):
         return tf.Session(config=tf.ConfigProto(
             gpu_options=gpu_options, intra_op_parallelism_threads=num_threads))
     else:
+        print( "ok" )
         return tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 def run_on_cpu():
@@ -42,8 +43,8 @@ def run_on_cpu():
     )
     return tf.Session(config=config)
 
-#KTF.set_session(get_session())
-KTF.set_session( run_on_cpu() )
+KTF.set_session(get_session())
+#KTF.set_session( run_on_cpu() )
 
 env = gym.make( 'BreakoutDeterministic-v4')
 
@@ -88,7 +89,7 @@ from keras import initializers
 
 model = Sequential()
 
-init_distr = "normal"
+init_distr = initializers.RandomNormal(mean=0.0, stddev=0.05, seed=None)
 
 #32 filters of kernel(3,3), stride=4, input shape must be in format row, col, channels
 #init='uniform',
