@@ -9,17 +9,6 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 os.system('export CUDA_VISIBLE_DEVICES=""')
 
-import gc
-
-#from keras import backend
-
-
-# Load Breakout Atari Game
-
-# In[2]:
-
-
-import os
 import tensorflow as tf
 import keras.backend.tensorflow_backend as KTF
 
@@ -94,7 +83,7 @@ init_distr = initializers.RandomNormal(mean=0.0, stddev=0.05, seed=None)
 #32 filters of kernel(3,3), stride=4, input shape must be in format row, col, channels
 #init='uniform',
 
-model.add( Lambda(lambda x: x / 255.0, dtype='float32', input_shape=(84,84,4) ) )
+model.add( Lambda(lambda x: x / 255.0, dtype='float32',  input_shape=(84,84,4)) )
 
 model.add( Conv2D(32, (8,8), strides=(4,4), padding='same' ) )#deep mind
 #model.add( Conv2D(16, (8,8), strides=(2,2), kernel_initializer=initializers.random_normal(stddev=0.01), padding='same', input_shape=(84,84,4) ) )
@@ -116,8 +105,7 @@ model.add( Dense( env.action_space.n, kernel_initializer=init_distr, activation=
 #model.compile(RMSprop(), 'MSE')
 #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 learning_rate = 0.001#025
-#model.compile(loss='mse', optimizer=RMSprop(lr=learning_rate, rho=0.95, epsilon=0.01), metrics=['accuracy'] )
-model.compile(loss='mse', optimizer=Adam(lr=learning_rate), metrics=['accuracy'] )
+model.compile(loss='mse', optimizer=RMSprop(lr=learning_rate, rho=0.95, epsilon=0.01), metrics=['accuracy'] )
 
 model.summary()
 
