@@ -71,7 +71,7 @@ def preprocess_observation( observation ):
 from keras.models import Sequential
 from keras.layers import Dense, Flatten, Activation, Lambda
 from keras.layers.convolutional import Conv2D
-from keras.optimizers import RMSprop
+from keras.optimizers import RMSprop, Adam
 from keras import initializers
 
 # Build model
@@ -105,7 +105,7 @@ model.add( Dense( env.action_space.n, kernel_initializer=init_distr, activation=
 #model.compile(RMSprop(), 'MSE')
 #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 learning_rate = 0.001#025
-model.compile(loss='mse', optimizer=RMSprop(lr=learning_rate, rho=0.95, epsilon=0.01), metrics=['accuracy'] )
+model.compile(loss='mse', optimizer=Adam(lr=learning_rate), metrics=['accuracy'] )
 
 model.summary()
 
@@ -114,6 +114,7 @@ from keras.models import model_from_json
 
 json_string = model.to_json()
 fixed_model = model_from_json(json_string)#does not load weights
+fixed_model.compile(loss='mse', optimizer=Adam(lr=learning_rate), metrics=['accuracy'] )
 
 init_state = preprocess_observation( env.reset() )
 
@@ -396,7 +397,7 @@ while episode <= total_observe:#3600*5):
     if must_observe() == False:
         frames += steps
         total_frames.append( frames )
-        print( "Episode " + str(episode) + " | total reward := " + str(total_reward) + " | steps := " + str(steps) + " total frames := " + str(frames) )
+        print( "Episode " + str(episode) + " | total reward := " + str(total_reward) + " | steps := " + str(steps) + " total frames := " + str(frames) + " | epsilon := " + str(epsilon) )
     else:
         print( "Observe total frames := " + str(observe_frame) )
 
