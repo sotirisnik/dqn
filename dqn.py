@@ -93,10 +93,11 @@ init_distr = initializers.RandomNormal(mean=0.0, stddev=0.05, seed=None)
 
 #32 filters of kernel(3,3), stride=4, input shape must be in format row, col, channels
 #init='uniform',
-model.add( Conv2D(32, (8,8), strides=(4,4), padding='same', input_shape=(84,84,4) ) )#deep mind
-#model.add( Conv2D(16, (8,8), strides=(2,2), kernel_initializer=initializers.random_normal(stddev=0.01), padding='same', input_shape=(84,84,4) ) )
 
-model.add( Lambda(lambda x: x / 255.0, dtype='float32') )
+model.add( Lambda(lambda x: x / 255.0, dtype='float32', input_shape=(84,84,4) ) )
+
+model.add( Conv2D(32, (8,8), strides=(4,4), padding='same' ) )#deep mind
+#model.add( Conv2D(16, (8,8), strides=(2,2), kernel_initializer=initializers.random_normal(stddev=0.01), padding='same', input_shape=(84,84,4) ) )
 
 model.add( Activation( 'relu' ) )
 
@@ -115,7 +116,8 @@ model.add( Dense( env.action_space.n, kernel_initializer=init_distr, activation=
 #model.compile(RMSprop(), 'MSE')
 #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 learning_rate = 0.001#025
-model.compile(loss='mse', optimizer=RMSprop(lr=learning_rate, rho=0.95, epsilon=0.01), metrics=['accuracy'] )
+#model.compile(loss='mse', optimizer=RMSprop(lr=learning_rate, rho=0.95, epsilon=0.01), metrics=['accuracy'] )
+model.compile(loss='mse', optimizer=Adam(lr=learning_rate), metrics=['accuracy'] )
 
 model.summary()
 
@@ -140,7 +142,7 @@ start_episode = 1
 epsilon = 1
 epsilon_min = 0.1
 
-exploration_steps = 1000000
+exploration_steps = 500000#1000000
 
 epsilon_discount = ( epsilon - epsilon_min ) / exploration_steps
 
@@ -325,7 +327,7 @@ while episode <= total_observe:#3600*5):
 
     while True:
 
-        #env.render()
+        env.render()
 
         stack_observation = np.stack(recent_frames,axis=0)
 
