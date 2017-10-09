@@ -71,7 +71,7 @@ def preprocess_observation( observation ):
 from keras.models import Sequential
 from keras.layers import Dense, Flatten, Activation, Lambda
 from keras.layers.convolutional import Conv2D
-from keras.optimizers import RMSprop, Adam
+from keras.optimizers import RMSprop
 from keras import initializers
 
 # Build model
@@ -105,9 +105,15 @@ model.add( Dense( env.action_space.n, kernel_initializer=init_distr, activation=
 #model.compile(RMSprop(), 'MSE')
 #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
 learning_rate = 0.001#025
-model.compile(loss='mse', optimizer=Adam(lr=learning_rate), metrics=['accuracy'] )
+model.compile(loss='mse', optimizer=RMSprop(lr=learning_rate, rho=0.95, epsilon=0.01), metrics=['accuracy'] )
 
 model.summary()
+
+#build fixed
+from keras.models import model_from_json
+
+json_string = model.to_json()
+fixed_model = model_from_json(json_string)#does not load weights
 
 init_state = preprocess_observation( env.reset() )
 
@@ -152,7 +158,7 @@ def save_deque():
     output.close()
 
 def load_dqn_model():
-    global model
+    global model, fixed_model
     from keras.models import model_from_json
     # load json and create model
     json_file = open('model_background.json', 'r')
@@ -164,6 +170,17 @@ def load_dqn_model():
     print("Loaded model from disk")
     #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
     model.compile(loss='mse', optimizer=Adam(lr=learning_rate), metrics=['accuracy'] )
+
+    # load json and create model
+    json_file = open('model_background.json', 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    fixed_model = model_from_json(loaded_model_json)
+    # load weights into new model
+    fixed_model.load_weights("model_background.h5")
+    print("Loaded model from disk - loaded to fixed")
+    #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
+    fixed_model.compile(loss='mse', optimizer=Adam(lr=learning_rate), metrics=['accuracy'] )
 
 import pandas as pd
 import pickle
@@ -282,7 +299,7 @@ def replay( ):
     all_y = np.array( all_y ).reshape( (MIN_SIZE,4) )
 
     #model.train_on_batch( all_x, all_y )
-    model.fit(all_x, all_y, epochs=1, batch_size=MIN_SIZE, verbose=0)
+    fixed_model.fit(all_x, all_y, epochs=1, batch_size=MIN_SIZE, verbose=0)
 
     del all_x, all_y
 
@@ -385,6 +402,7 @@ while episode <= total_observe:#3600*5):
 
     if episode % 10 == 0 and episode > 1:
         if must_observe() == False:
+            model.set_weights( fixed_model.get_weights() )
             save_train()
 
     if must_observe() == False:
