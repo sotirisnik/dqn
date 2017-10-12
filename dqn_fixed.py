@@ -133,7 +133,7 @@ start_episode = 1
 epsilon = 1
 epsilon_min = 0.1
 
-exploration_steps = 500000#1000000
+exploration_steps = 1000000
 
 epsilon_discount = ( epsilon - epsilon_min ) / exploration_steps
 
