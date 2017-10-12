@@ -22,7 +22,6 @@ def get_session(gpu_fraction=0.7):
         return tf.Session(config=tf.ConfigProto(
             gpu_options=gpu_options, intra_op_parallelism_threads=num_threads))
     else:
-        print( "ok" )
         return tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 
 def run_on_cpu():
@@ -35,7 +34,7 @@ def run_on_cpu():
 KTF.set_session(get_session())
 #KTF.set_session( run_on_cpu() )
 
-env = gym.make( 'BreakoutDeterministic-v4')
+env = gym.make( 'Breakout-v4')
 
 # Preprocess observation
 # Crop image - do not keep score
@@ -79,32 +78,29 @@ from keras import initializers
 model = Sequential()
 
 init_distr = initializers.RandomNormal(mean=0.0, stddev=0.05, seed=None)
-
+#kernel_initializer=init_distr
 #32 filters of kernel(3,3), stride=4, input shape must be in format row, col, channels
 #init='uniform',
 
 model.add( Lambda(lambda x: x / 255.0, dtype='float32',  input_shape=(84,84,4)) )
 
-model.add( Conv2D(32, (8,8), strides=(4,4), padding='same' ) )#deep mind
-#model.add( Conv2D(16, (8,8), strides=(2,2), kernel_initializer=initializers.random_normal(stddev=0.01), padding='same', input_shape=(84,84,4) ) )
-
+model.add( Conv2D(32, (8,8), strides=(4,4), padding='same' ) )
 model.add( Activation( 'relu' ) )
 
-model.add(Conv2D(64, (4,4), strides=(2,2), padding='same' ) )#deep min
-#model.add(Conv2D(32, (4,4), strides=(2,2), kernel_initializer=initializers.random_normal(stddev=0.01), padding='same' ) )
+model.add(Conv2D(64, (4,4), strides=(2,2), padding='same' ) )
 model.add( Activation( 'relu' ) )
 
-model.add(Conv2D(64, (3,3), strides=(1,1), kernel_initializer=initializers.random_normal(stddev=0.01), padding='same' ) )
+model.add(Conv2D(64, (3,3), strides=(1,1), padding='same' ) )
 model.add( Activation( 'relu' ) )
 
 model.add(Flatten())
-model.add(Dense(512, kernel_initializer=init_distr, activation='relu'))
-model.add(Dense(256, kernel_initializer=init_distr, activation='relu'))
-model.add(Dense(128, kernel_initializer=init_distr, activation='relu'))
-model.add( Dense( env.action_space.n, kernel_initializer=init_distr, activation='linear' ) )
+model.add(Dense(512, activation='relu'))
+model.add(Dense(256, activation='relu'))
+model.add(Dense(128, activation='relu'))
+model.add( Dense( env.action_space.n, activation='linear' ) )
 #model.compile(RMSprop(), 'MSE')
 #model.compile(loss='mse', optimizer='adam', metrics=['accuracy'])
-learning_rate = 0.001#025
+learning_rate = 1e-6#025
 model.compile(loss='mse', optimizer=Adam(lr=learning_rate), metrics=['accuracy'] )
 
 model.summary()
